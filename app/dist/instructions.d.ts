@@ -1,0 +1,12 @@
+import { BN } from "@coral-xyz/anchor";
+import { PublicKey, TransactionInstruction } from "@solana/web3.js";
+export declare const createInitializeInstruction: (program: any, payer: PublicKey, originalMint: PublicKey, wrapFeeBps: number, unwrapFeeBps: number, auditor?: PublicKey | null) => Promise<TransactionInstruction>;
+export declare const createWrapInstruction: (program: any, payer: PublicKey, originalMint: PublicKey, userOriginalAccount: PublicKey, userWrappedAccount: PublicKey, amount: BN) => Promise<TransactionInstruction>;
+export declare const createUnwrapInstruction: (program: any, payer: PublicKey, originalMint: PublicKey, userOriginalAccount: PublicKey, userWrappedAccount: PublicKey, amount: BN) => Promise<TransactionInstruction>;
+export declare const createPauseInstruction: (program: any, authority: PublicKey, originalMint: PublicKey) => Promise<TransactionInstruction>;
+export declare const createUnpauseInstruction: (program: any, authority: PublicKey, originalMint: PublicKey) => Promise<TransactionInstruction>;
+export declare const createSetFeesInstruction: (program: any, authority: PublicKey, originalMint: PublicKey, wrapFeeBps: number, unwrapFeeBps: number) => Promise<TransactionInstruction>;
+export declare const createSetAuthorityInstruction: (program: any, authority: PublicKey, originalMint: PublicKey, newAuthority: PublicKey) => Promise<TransactionInstruction>;
+export declare const createWithdrawFeesInstruction: (program: any, authority: PublicKey, originalMint: PublicKey, authorityTokenAccount: PublicKey) => Promise<TransactionInstruction>;
+export declare const createFreezeAccountInstruction: (program: any, authority: PublicKey, originalMint: PublicKey, targetAccount: PublicKey) => Promise<TransactionInstruction>;
+export declare const createThawAccountInstruction: (program: any, authority: PublicKey, originalMint: PublicKey, targetAccount: PublicKey) => Promise<TransactionInstruction>;

@@ -1,43 +1,83 @@
 # c-SPL Token Wrapper
 
-A Solana Anchor project that wraps standard SPL tokens into Token-2022 Confidential Transfer compatible tokens ("c-SPL").
+A Solana Anchor program that wraps standard SPL tokens into Token-2022 Confidential Transfer compatible tokens.
 
-## Prerequisites
+## Features
 
-To run this project, you must have the Solana Tool Suite and Anchor installed:
+- ✅ Wrap SPL tokens → Confidential SPL tokens
+- ✅ Unwrap back to original SPL tokens
+- ✅ Configurable fees (max 10%)
+- ✅ Admin controls (pause, fees, authority transfer)
+- ✅ Emergency freeze/thaw capability
+- ✅ Fee withdrawal for protocol revenue
 
-1.  **Rust**: `rustup`
-2.  **Solana**: `sh -c "$(curl -sSfL https://release.solana.com/v1.18.0/install)"` (or equivalent for Windows)
-3.  **Anchor**: `avm install latest`
-4.  **Node.js**: v18+
+## Quick Start
 
-## Setup
+```bash
+# Install dependencies
+npm install
 
-1.  Install Node dependencies:
-    ```bash
-    npm install
-    ```
+# Build program
+anchor build
 
-2.  Update Program ID (if needed):
-    *   The current ID in `lib.rs` and `Anchor.toml` is `F7e5FyeG8StgnEDWTgBZSYyacfQuzgtHCxu1qg9ucseR`.
-    *   If you deploy/sync locally, you might need to run `anchor keys sync`.
-
-## Build & Test
-
-1.  **Build** the program:
-    ```bash
-    anchor build
-    ```
-    *This generates the `target/` directory and the IDL.*
-
-2.  **Test**:
-    ```bash
-    anchor test
-    ```
-    *This starts a local test validator and runs the scenarios in `tests/c_spl_wrapper.ts`.*
+# Run tests (requires Solana tools)
+anchor test
+```
 
 ## Architecture
 
-*   **Initialize**: Creates a `Wrapped Mint` (Token-2022) derived from the `Original Mint` (SPL). The wrapped mint has the `ConfidentialTransfer` extension enabled (configurable).
-*   **Wrap**: User sends SPL tokens to a program-controlled `Vault`. Program mints equal amount of c-SPL tokens to the user.
-*   **Unwrap**: User burns c-SPL tokens. Program releases original SPL tokens from `Vault`.
+```
+┌─────────────┐     wrap      ┌─────────────────┐
+│  SPL Token  │ ────────────→ │ c-SPL Token     │
+│  (Original) │               │ (CT-enabled)    │
+└─────────────┘               └─────────────────┘
+       ↓                              ↓
+  ┌─────────┐                 ┌──────────────┐
+  │  Vault  │←── backs ──────→│ Wrapped Mint │
+  └─────────┘                 └──────────────┘
+       ↑
+  WrapperConfig (PDA) controls all
+```
+
+## Instructions
+
+| Instruction | Description |
+|-------------|-------------|
+| `initialize` | Creates wrapped mint with CT extension |
+| `wrap` | Deposit SPL, receive c-SPL |
+| `unwrap` | Burn c-SPL, receive SPL |
+| `pause/unpause` | Emergency circuit breaker |
+| `set_fees` | Update wrap/unwrap fees (max 10%) |
+| `set_authority` | Transfer admin ownership |
+| `withdraw_fees` | Collect accumulated fees |
+| `freeze_account` | Freeze suspicious accounts |
+| `thaw_account` | Unfreeze accounts |
+
+## Client SDK
+
+```typescript
+import { 
+  createWrapInstruction,
+  createUnwrapInstruction,
+  findWrapperConfigPda 
+} from "c-spl-wrapper-sdk";
+
+// Wrap tokens
+const wrapIx = await createWrapInstruction(
+  program, user.publicKey, originalMint,
+  userOriginalAccount, userWrappedAccount,
+  new BN(1000)
+);
+```
+
+## Security
+
+- PDAs control all authority operations
+- Fees capped at 10% maximum
+- Zero-address authority prevention
+- Vault balance sanity checks
+- Emergency freeze capability
+
+## License
+
+MIT
