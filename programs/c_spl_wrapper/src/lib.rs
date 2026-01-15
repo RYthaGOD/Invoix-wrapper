@@ -265,7 +265,8 @@ pub mod c_spl_wrapper {
         anchor_spl::token::transfer(cpi_out_ctx, net_amount)?;
 
         // 5. Update Stats
-        stats.total_unwrapped = stats.total_unwrapped.checked_add(net_amount).ok_or(WrapperError::Overflow)?;
+        // NOTE: Track gross amount burned (not net) to match wrap accounting
+        stats.total_unwrapped = stats.total_unwrapped.checked_add(amount).ok_or(WrapperError::Overflow)?;
         stats.total_fees_collected = stats.total_fees_collected.checked_add(fee).ok_or(WrapperError::Overflow)?;
 
         emit!(UnwrapEvent {
@@ -349,7 +350,7 @@ pub mod c_spl_wrapper {
         // Withdrawable = vault - backed (the surplus from fees)
         let withdrawable = vault_balance
             .checked_sub(backed_tokens)
-            .ok_or(WrapperError::Overflow)?;
+            .ok_or(WrapperError::InsufficientVaultBalance)?;
         
         require!(withdrawable > 0, WrapperError::ZeroAmount);
         
@@ -620,6 +621,7 @@ pub struct WithdrawFees<'info> {
 
     #[account(
         has_one = authority @ WrapperError::Unauthorized,
+        has_one = original_mint @ WrapperError::InvalidMintPair,
         has_one = vault,
         seeds = [b"config", original_mint.key().as_ref()],
         bump = wrapper_config.bump,
@@ -654,6 +656,7 @@ pub struct FreezeAccountCtx<'info> {
 
     #[account(
         has_one = authority @ WrapperError::Unauthorized,
+        has_one = original_mint @ WrapperError::InvalidMintPair,
         seeds = [b"config", original_mint.key().as_ref()],
         bump = wrapper_config.bump,
     )]
