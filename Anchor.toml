@@ -6,14 +6,19 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-c_spl_wrapper = "F7e5FyeG8StgnEDWTgBZSYyacfQuzgtHCxu1qg9ucseR"
+c_spl_wrapper = "D3FaNQVD8NZC6CFT1AS8Rq2G26iAGZ19CgLJXNMfGAjY"
+
+[programs.devnet]
+c_spl_wrapper = "D3FaNQVD8NZC6CFT1AS8Rq2G26iAGZ19CgLJXNMfGAjY"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
-wallet = '~\.config\solana\id.json'
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run mocha -t 1000000 tests/"
+test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[hooks]

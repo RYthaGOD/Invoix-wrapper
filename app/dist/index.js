@@ -17,3 +17,5 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./pdas"), exports);
 __exportStar(require("./instructions"), exports);
 __exportStar(require("./confidential"), exports);
+__exportStar(require("./types"), exports);
+__exportStar(require("./accounts"), exports);

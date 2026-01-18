@@ -13,16 +13,36 @@ A Solana Anchor program that wraps standard SPL tokens into Token-2022 Confident
 
 ## Quick Start
 
+### 1. Build Program & SDK
 ```bash
-# Install dependencies
+# Install root dependencies
 npm install
 
 # Build program
 anchor build
 
-# Run tests (requires Solana tools)
+# Run tests
 anchor test
 ```
+
+### 2. Run Frontend local
+```bash
+cd frontend
+npm install
+npm run dev
+# Open http://localhost:5173
+```
+
+### 3. Verify E2E on Devnet
+```bash
+cd app
+# Ensure detailed logs and devnet wallet
+npx ts-node src/verify_e2e.ts
+```
+
+## Deployed Addresses (Devnet)
+- **Program ID**: `D3FaNQVD8NZC6CFT1AS8Rq2G26iAGZ19CgLJXNMfGAjY`
+
 
 ## Architecture
 

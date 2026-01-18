@@ -26,7 +26,7 @@ use state::*;
 use errors::*;
 use events::*;
 
-declare_id!("F7e5FyeG8StgnEDWTgBZSYyacfQuzgtHCxu1qg9ucseR");
+declare_id!("D3FaNQVD8NZC6CFT1AS8Rq2G26iAGZ19CgLJXNMfGAjY");
 
 #[program]
 pub mod c_spl_wrapper {
