@@ -6,7 +6,15 @@ The API is **non-custodial**. It generates **serialized Solana transactions** th
 
 ## Base URL
 Local: `http://localhost:3001/v1`
-Production: `(Coming Soon)`
+Production: `https://api.yourdomain.com/v1` (Update this after deployment)
+
+> [!IMPORTANT]
+> When deploying to production:
+> 1.  Set `RPC_URL` environment variable to a premium Solana RPC provider (not public devnet).
+> 2.  Update the **Base URL** in this documentation.
+> 3.  Ensure your server has a valid SSL certificate (HTTPS).
+> 4.  (Optional) Implement API Key authentication in `src/middleware.ts` if you want to restrict access.
+
 
 ## Endpoints
 
