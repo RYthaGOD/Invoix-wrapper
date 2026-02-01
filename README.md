@@ -40,6 +40,20 @@ cd app
 npx ts-node src/verify_e2e.ts
 ```
 
+### 4. Test on Localnet (with Confidential Transfers)
+```bash
+# Build Token-2022 with zk-ops
+./scripts/setup-token2022.sh
+
+# Start localnet validator
+./scripts/start-localnet.sh
+
+# Run tests
+npx ts-node scripts/test-localnet.ts
+
+# See LOCALNET_TESTING.md for full guide
+```
+
 ## Deployed Addresses (Devnet)
 - **Program ID**: `D3FaNQVD8NZC6CFT1AS8Rq2G26iAGZ19CgLJXNMfGAjY`
 

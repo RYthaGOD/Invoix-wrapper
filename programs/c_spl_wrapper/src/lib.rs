@@ -3,6 +3,7 @@ use anchor_lang::solana_program::{
     program::invoke,
     program::invoke_signed,
     system_instruction,
+    instruction::{AccountMeta, Instruction},
 };
 use anchor_spl::{
     associated_token::AssociatedToken,
@@ -10,7 +11,7 @@ use anchor_spl::{
     token_interface::{Mint, TokenAccount},
     token_2022::Token2022,
 };
-use spl_token_2022::{
+use anchor_spl::token_2022::spl_token_2022::{
     extension::{
         confidential_transfer,
         ExtensionType,
@@ -36,7 +37,7 @@ pub mod c_spl_wrapper {
         ctx: Context<Initialize>, 
         wrap_fee_bps: u16, 
         unwrap_fee_bps: u16,
-        auditor: Option<Pubkey>,
+        auditor_elgamal_pubkey: Option<[u8; 32]>,
     ) -> Result<()> {
         let config = &mut ctx.accounts.wrapper_config;
         let stats = &mut ctx.accounts.wrapper_stats;
@@ -54,7 +55,7 @@ pub mod c_spl_wrapper {
         config.unwrap_fee_bps = unwrap_fee_bps;
         config.is_paused = false;
         config.bump = ctx.bumps.wrapper_config;
-        config.auditor = auditor;
+        config.auditor_elgamal_pubkey = auditor_elgamal_pubkey;
 
         // 3. Initialize Stats PDA
         stats.total_wrapped = 0;
@@ -103,7 +104,7 @@ pub mod c_spl_wrapper {
             ctx.accounts.wrapped_mint.key,
             Some(config_key), // CT authority = WrapperConfig PDA
             true, // auto_approve_new_accounts
-            None, // auditor requires ElGamal pubkey, not stored yet - future enhancement
+            auditor_elgamal_pubkey.map(|k| k.into()), // Option<[u8; 32]> into Option<PodElGamalPubkey> 
         )?;
         
         invoke(
@@ -119,7 +120,7 @@ pub mod c_spl_wrapper {
         // Expects references for Pubkeys usually? 
         // spl-token-2022 8.0.1 source uses `&Pubkey` for authority args.
         
-        let init_mint_ix = spl_token_2022::instruction::initialize_mint(
+        let init_mint_ix = anchor_spl::token_2022::spl_token_2022::instruction::initialize_mint(
             ctx.accounts.token_2022_program.key,
             ctx.accounts.wrapped_mint.key,
             &config_key,     
@@ -445,6 +446,95 @@ pub mod c_spl_wrapper {
 
         Ok(())
     }
+
+    /// Configure an account for confidential transfers
+    pub fn configure_confidential_account(
+        ctx: Context<ConfigureConfidentialAccount>,
+        _elgamal_pubkey: [u8; 32],
+    ) -> Result<()> {
+        let token_program = &ctx.accounts.token_2022_program;
+        
+        // Manual instruction construction
+        // NOTE: This currently requires an external ZK proof if not a fresh account
+        
+        let mut data = Vec::with_capacity(47);
+        data.push(27); // ConfidentialTransferExtension
+        data.push(2);  // ConfigureAccount
+        data.extend_from_slice(&[0u8; 36]); // decryptable_zero_balance
+        data.extend_from_slice(&65535u64.to_le_bytes()); // maximum_pending_balance_credit_counter
+        data.push(-1i8 as u8); // proof_instruction_offset
+
+        let accounts = vec![
+            AccountMeta::new(ctx.accounts.user_wrapped_account.key(), false),
+            AccountMeta::new_readonly(ctx.accounts.wrapped_mint.key(), false),
+            AccountMeta::new_readonly(ctx.accounts.instructions_sysvar.key(), false),
+            AccountMeta::new_readonly(ctx.accounts.user.key(), true),
+        ];
+
+        let ix = Instruction {
+            program_id: *token_program.key,
+            accounts,
+            data,
+        };
+
+        invoke(
+            &ix,
+            &[
+                ctx.accounts.user_wrapped_account.to_account_info(),
+                ctx.accounts.wrapped_mint.to_account_info(),
+                ctx.accounts.instructions_sysvar.to_account_info(),
+                ctx.accounts.user.to_account_info(),
+            ],
+        )?;
+
+        Ok(())
+    }
+
+    /// Apply pending confidential balance to available balance
+    pub fn apply_pending_balance(
+        ctx: Context<ApplyPendingBalance>,
+        expected_pending_balance_credit_counter: u64,
+        new_decryptable_available_balance: [u8; 36],
+    ) -> Result<()> {
+        let token_program = &ctx.accounts.token_2022_program;
+
+        // Manual instruction construction
+        // TokenInstruction::ConfidentialTransferExtension = 27
+        // ConfidentialTransferInstruction::ApplyPendingBalance = 8
+        
+        // Data layout:
+        // [0..1] TokenInstruction tag (27)
+        // [1..2] ConfidentialTransferInstruction tag (8)
+        // [2..10] expected_pending_balance_credit_counter (u64 le)
+        // [10..46] new_decryptable_available_balance (36 bytes)
+
+        let mut data = Vec::with_capacity(46);
+        data.push(27); // ConfidentialTransferExtension
+        data.push(8);  // ApplyPendingBalance
+        data.extend_from_slice(&expected_pending_balance_credit_counter.to_le_bytes());
+        data.extend_from_slice(&new_decryptable_available_balance);
+
+        let accounts = vec![
+            AccountMeta::new(ctx.accounts.user_wrapped_account.key(), false),
+            AccountMeta::new_readonly(ctx.accounts.user.key(), true),
+        ];
+
+        let ix = Instruction {
+            program_id: *token_program.key,
+            accounts,
+            data,
+        };
+
+        invoke(
+            &ix,
+            &[
+                ctx.accounts.user_wrapped_account.to_account_info(),
+                ctx.accounts.user.to_account_info(),
+            ],
+        )?;
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -644,6 +734,7 @@ pub struct WithdrawFees<'info> {
     #[account(
         mut,
         token::mint = original_mint,
+        token::authority = authority,
     )]
     pub authority_token_account: Account<'info, anchor_spl::token::TokenAccount>,
 
@@ -676,5 +767,44 @@ pub struct FreezeAccountCtx<'info> {
     pub target_account: InterfaceAccount<'info, TokenAccount>,
 
     pub authority: Signer<'info>,
+    pub token_2022_program: Program<'info, Token2022>,
+}
+#[derive(Accounts)]
+pub struct ConfigureConfidentialAccount<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(
+        seeds = [b"mint", original_mint.key().as_ref()],
+        bump,
+    )]
+    pub wrapped_mint: InterfaceAccount<'info, Mint>,
+
+    pub original_mint: Account<'info, anchor_spl::token::Mint>,
+
+    #[account(
+        mut,
+        token::mint = wrapped_mint,
+        token::authority = user,
+    )]
+    pub user_wrapped_account: InterfaceAccount<'info, TokenAccount>,
+
+    pub token_2022_program: Program<'info, Token2022>,
+    /// CHECK: Instructions sysvar for ZK proof introspection
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::id())]
+    pub instructions_sysvar: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ApplyPendingBalance<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(
+        mut,
+        token::authority = user,
+    )]
+    pub user_wrapped_account: InterfaceAccount<'info, TokenAccount>,
+
     pub token_2022_program: Program<'info, Token2022>,
 }

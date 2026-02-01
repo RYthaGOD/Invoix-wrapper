@@ -6,7 +6,7 @@ pub struct WrapperConfig {
     pub original_mint: Pubkey,      // The source SPL token mint
     pub wrapped_mint: Pubkey,       // The Token-2022 CT-enabled mint
     pub vault: Pubkey,              // The vault holding original tokens
-    pub auditor: Option<Pubkey>,    // Optional auditor for CT
+    pub auditor_elgamal_pubkey: Option<[u8; 32]>, // Auditor's ElGamal key
     pub wrap_fee_bps: u16,          // Fee for wrapping (basis points)
     pub unwrap_fee_bps: u16,        // Fee for unwrapping (basis points)
     pub is_paused: bool,            // Emergency pause state
